@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TouchGrass AI — Open-Source Offline Trail & Nature Companion</title>
+  <meta name="description" content="An open-weight, 100% offline nature discovery companion. Real-time bioacoustic bird call identification, fall foliage run route builder, local frost planting guide, and screen-minimizing outdoor quests.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS for offline-capable trail & foliage route mapping -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <!-- Top Ambient Glow -->
+  <div class="ambient-glow glow-forest"></div>
+  <div class="ambient-glow glow-amber"></div>
+
+  <!-- App Wrapper -->
+  <div id="app" class="app-layout">
+    
+    <!-- Header / Global Status Bar -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">TouchGrass <span class="badge badge-accent">v1.0 • OPEN AI</span></div>
+          <p class="brand-tagline">Open-Weight Offline Nature & Trail Field Kit</p>
+        </div>
+      </div>
+
+      <!-- Telemetry Bar -->
+      <div class="telemetry-bar">
+        <div class="telemetry-item" id="telemetry-status" title="Local Inference Mode">
+          <span class="status-dot dot-active"></span>
+          <span class="telemetry-label">Engine:</span>
+          <strong id="ai-engine-status">Browser ONNX/WASM</strong>
+        </div>
+        <div class="telemetry-item" id="telemetry-time">
+          <span class="icon">☀️</span>
+          <span class="telemetry-label">Sun:</span>
+          <strong id="golden-hour-timer">Golden Hr in 2h 45m</strong>
+        </div>
+        <div class="telemetry-item" id="telemetry-gps">
+          <span class="icon">📍</span>
+          <span class="telemetry-label">Trailhead:</span>
+          <strong id="current-location-text">44.97° N, 93.26° W (Auto)</strong>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="header-actions">
+        <button id="btn-pocket-mode" class="btn btn-stealth" title="Screen-Off / Audio Pings Mode for maximum outdoor presence">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+          <span>Pocket Mode</span>
+        </button>
+        <button id="btn-open-dev-post" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>DEV Challenge Post</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" aria-label="Main Navigation">
+      <button class="nav-tab active" data-tab="tab-birdcall">
+        <span class="tab-icon">🦉</span>
+        <span class="tab-title">AvianBio Acoustic AI</span>
+        <span class="tab-sub">Bird Call & Fauna ID</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-foliage">
+        <span class="tab-icon">🍁</span>
+        <span class="tab-title">Foliage & Run Club</span>
+        <span class="tab-sub">Canopy Route Builder</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-gardener">
+        <span class="tab-icon">🌱</span>
+        <span class="tab-title">SeedToSoil Scout</span>
+        <span class="tab-sub">Local Frost Planting</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-quest">
+        <span class="tab-icon">🌲</span>
+        <span class="tab-title">Short-Screen Quests</span>
+        <span class="tab-sub">Touch Grass & Listen</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-open-ai">
+        <span class="tab-icon">⚡</span>
+        <span class="tab-title">Open AI Architecture</span>
+        <span class="tab-sub">Local Weights & Privacy</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- ========================================================
+           TAB 1: AVIANBIO ACOUSTIC AI (BIRD CALL IDENTIFIER)
+           ======================================================== -->
+      <section id="tab-birdcall" class="tab-pane active">
+        <div class="grid-layout grid-2-col">
+          
+          <!-- Acoustic Monitor Card -->
+          <div class="card card-glow">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">WebAudio + FFT Neural Feature Extractor</span>
+                <h2>Trail Audio Spectrogram & Classifier</h2>
+              </div>
+              <span class="badge badge-success" id="mic-status-badge">Trail Audio Ready</span>
+            </div>
+
+            <p class="card-description">
+              Works 100% offline with no cell signal. Listens to environmental frequencies (1 kHz - 12 kHz), isolates avian trills, and runs feature classification right in your browser.
+            </p>
+
+            <!-- Live Spectrogram Visualizer -->
+            <div class="spectrogram-container">
+              <canvas id="spectrogram-canvas" width="600" height="180" aria-label="Audio frequency spectrogram canvas"></canvas>
+              <div class="spectrogram-overlay">
+                <div class="freq-marker marker-high">10 kHz (Warblers & Kinglets)</div>
+                <div class="freq-marker marker-mid">4 kHz (Robins & Sparrows)</div>
+                <div class="freq-marker marker-low">1 kHz (Owls & Woodpeckers)</div>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="audio-controls-row">
+              <button id="btn-toggle-mic" class="btn btn-emerald btn-lg">
+                <span class="btn-icon">🎙️</span>
+                <span id="mic-btn-text">Start Live Trail Listening</span>
+              </button>
+              
+              <div class="sample-picker-group">
+                <label for="sample-select" class="sample-label">Or Test Field Recording:</label>
+                <select id="sample-select" class="select-field">
+                  <option value="wood_thrush">Wood Thrush (Flute Melodic Call)</option>
+                  <option value="barred_owl">Barred Owl ("Who cooks for you?")</option>
+                  <option value="chickadee">Black-capped Chickadee ("Fee-bee / Dee-dee")</option>
+                  <option value="song_sparrow">Song Sparrow (High Cascade Trill)</option>
+                  <option value="red_tailed_hawk">Red-tailed Hawk (Piercing Scream)</option>
+                  <option value="american_robin">American Robin (Cheerily Cheerup)</option>
+                  <option value="cricket_chorus">Autumn Grass Katydid & Crickets</option>
+                </select>
+                <button id="btn-play-sample" class="btn btn-secondary">
+                  <span class="btn-icon">▶</span> Play & Classify
+                </button>
+              </div>
+            </div>
+
+            <!-- Real-time Audio Diagnostics -->
+            <div class="audio-telemetry-grid">
+              <div class="telemetry-pill">
+                <span class="pill-label">Dominant Frequency:</span>
+                <strong id="dom-freq">--- Hz</strong>
+              </div>
+              <div class="telemetry-pill">
+                <span class="pill-label">Spectral Centroid:</span>
+                <strong id="spectral-centroid">---</strong>
+              </div>
+              <div class="telemetry-pill">
+                <span class="pill-label">Audio SNR / Peak:</span>
+                <strong id="audio-snr">-48 dB</strong>
+              </div>
+              <div class="telemetry-pill">
+                <span class="pill-label">Inference Latency:</span>
+                <strong id="inference-time">14 ms (Local)</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Classification Results Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Open-Weight Prediction</span>
+                <h2>Identified Bio-Acoustic Signatures</h2>
+              </div>
+              <button id="btn-log-observation" class="btn btn-sm btn-outline">
+                + Add to Field Log
+              </button>
+            </div>
+
+            <!-- Active Identification Details -->
+            <div id="classification-results" class="results-container">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Field Verification Tips -->
+            <div class="field-tips-box">
+              <div class="tips-header">
+                <span class="icon">💡</span>
+                <strong>Trail Naturalist Tip:</strong>
+              </div>
+              <p id="trail-tip-text">
+                Wood Thrushes use their syrinx to sing two notes simultaneously at dusk. Look for them in moist deciduous forest understories foraging in leaf litter.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================================
+           TAB 2: FOLIAGE & RUN CLUB ROUTE BUILDER
+           ======================================================== -->
+      <section id="tab-foliage" class="tab-pane">
+        <div class="grid-layout grid-map-sidebar">
+          
+          <!-- Route Settings Panel -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Off-Screen Motion</span>
+                <h2>Canopy & Foliage Route Builder</h2>
+              </div>
+            </div>
+            
+            <p class="card-description">
+              Finds the trails with the densest autumn foliage canopy, fewest road crossings, and richest dirt trails so your run or hike keeps you immersed in nature.
+            </p>
+
+            <form id="route-form" class="form-grid" onsubmit="return false;">
+              <div class="form-group">
+                <label for="route-distance">Target Distance</label>
+                <div class="distance-buttons">
+                  <button type="button" class="btn-pill active" data-dist="3">3 km (Walk)</button>
+                  <button type="button" class="btn-pill" data-dist="5">5 km (Trail Run)</button>
+                  <button type="button" class="btn-pill" data-dist="10">10 km (Club Loop)</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="route-vibe">Forest & Surface Vibe</label>
+                <select id="route-vibe" class="select-field">
+                  <option value="max_foliage">Max Autumn Foliage (Maple/Oak Ridges)</option>
+                  <option value="river_creek">Creek & Riparian Woods (Willows & Moss)</option>
+                  <option value="deep_woods">Deep Singletrack Dirt (Dense Canopy)</option>
+                  <option value="sunset_vista">High Ridge Sunset Loop</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="route-elevation">Trail Terrain</label>
+                <select id="route-elevation" class="select-field">
+                  <option value="rolling">Rolling Hills (+85m gain)</option>
+                  <option value="flat">Gentle / Flat Waterside</option>
+                  <option value="steep">Steep Ridge Scramble (+170m gain)</option>
+                </select>
+              </div>
+
+              <button id="btn-generate-route" class="btn btn-emerald btn-block">
+                <span>🌲 Generate Optimized Nature Loop</span>
+              </button>
+            </form>
+
+            <!-- Foliage Season Meter -->
+            <div class="foliage-meter-box">
+              <div class="meter-title-row">
+                <span>Current Autumn Foliage State:</span>
+                <strong id="foliage-phase-badge" class="badge badge-amber">PEAK COLOR (88%)</strong>
+              </div>
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="foliage-progress-bar" style="width: 88%;"></div>
+              </div>
+              <div class="meter-labels">
+                <span>Green</span>
+                <span>Early Shift</span>
+                <span>Peak Foliage</span>
+                <span>Past Peak</span>
+              </div>
+            </div>
+
+            <!-- Route Summary Metrics -->
+            <div id="route-metrics" class="route-metrics-grid">
+              <div class="metric-card">
+                <span class="metric-label">Estimated Loop</span>
+                <strong class="metric-value" id="route-dist-text">5.1 km</strong>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Tree Canopy %</span>
+                <strong class="metric-value text-emerald" id="route-canopy-text">92% Cover</strong>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Off-Road Dirt</span>
+                <strong class="metric-value text-amber" id="route-dirt-text">86% Singletrack</strong>
+              </div>
+              <div class="metric-card">
+                <span class="metric-label">Screen Lookups</span>
+                <strong class="metric-value text-cyan" id="route-screen-text">&lt; 1 min total</strong>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Interactive Leaflet Map & Elevation Canvas -->
+          <div class="card card-flush map-card-container">
+            <div class="map-toolbar">
+              <div class="map-status">
+                <span class="status-dot dot-active"></span>
+                <span>Interactive Trail GPS Map (Cached for Offline)</span>
+              </div>
+              <div class="map-actions">
+                <button id="btn-center-trail" class="btn btn-sm btn-secondary" title="Center on Trailhead">
+                  📍 Center Trail
+                </button>
+                <button id="btn-simulate-run" class="btn btn-sm btn-emerald" title="Simulate Run Club Runner">
+                  🏃 Simulate Run Club Group
+                </button>
+              </div>
+            </div>
+
+            <!-- Map Target -->
+            <div id="leaflet-map" class="map-view" role="region" aria-label="Foliage Route Map"></div>
+
+            <!-- Elevation Profile Bar -->
+            <div class="elevation-profile-container">
+              <div class="elevation-header">
+                <span>Trail Elevation & Nature Landmarks</span>
+                <span id="elevation-gain-text">Total Climb: +94 m</span>
+              </div>
+              <canvas id="elevation-canvas" width="600" height="70" aria-label="Trail elevation profile"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================================
+           TAB 3: SEEDTOSOIL SCOUT (LOCAL FROST & PLANTING)
+           ======================================================== -->
+      <section id="tab-gardener" class="tab-pane">
+        <div class="grid-layout grid-2-col">
+          
+          <!-- Climate & Frost Calculator -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Autumn / Spring Frost Engine</span>
+                <h2>What to Plant & Harvest This Week</h2>
+              </div>
+              <span class="badge badge-accent" id="hardiness-zone-badge">USDA Zone 5b</span>
+            </div>
+
+            <p class="card-description">
+              Tells you precisely what outdoor gardening tasks get your hands into real soil right now, calculated against your region's historical first frost date.
+            </p>
+
+            <!-- Zone & Date Selector -->
+            <div class="frost-control-bar">
+              <div class="form-group-inline">
+                <label for="zone-select">Hardiness Zone:</label>
+                <select id="zone-select" class="select-field">
+                  <option value="3">Zone 3 (-40°F / Canada & North Dakota)</option>
+                  <option value="4">Zone 4 (-30°F / Northern MN, WI, VT)</option>
+                  <option value="5" selected>Zone 5 (-20°F / Midwest, Chicago, Upstate NY)</option>
+                  <option value="6">Zone 6 (-10°F / Mid-Atlantic, Ohio, PA)</option>
+                  <option value="7">Zone 7 (0°F / Virginia, Tennessee, PNW)</option>
+                  <option value="8">Zone 8 (10°F / Carolinas, Georgia, Texas)</option>
+                  <option value="9">Zone 9 (20°F / Florida, California Coast)</option>
+                </select>
+              </div>
+
+              <div class="form-group-inline">
+                <label for="season-mode">Season Focus:</label>
+                <select id="season-mode" class="select-field">
+                  <option value="autumn_frost" selected>Autumn Prep & Winterizing (Current)</option>
+                  <option value="spring_thaw">Spring Seed Starting & Thaw</option>
+                  <option value="mid_summer">Summer Heat & Harvest</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Frost Countdown Card -->
+            <div class="frost-countdown-box">
+              <div class="frost-stat">
+                <span class="stat-number text-amber" id="days-to-frost">12</span>
+                <span class="stat-caption">Days Until Avg First Fall Frost</span>
+                <small id="frost-date-estimate">Estimated: October 18</small>
+              </div>
+              <div class="frost-divider"></div>
+              <div class="frost-stat">
+                <span class="stat-number text-emerald" id="soil-temp-estimate">54°F</span>
+                <span class="stat-caption">Estimated Topsoil Temp (4")</span>
+                <small>Ideal for root development</small>
+              </div>
+            </div>
+
+            <!-- Direct Action Checklist -->
+            <div class="gardening-actions-section">
+              <h3 class="section-subheading">🌱 Get Outside & Do This Week:</h3>
+              <div id="weekly-action-items" class="action-items-list">
+                <!-- Injected by JS -->
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Plant Matrix & Soil Companion -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Seasonal Botanical Matrix</span>
+                <h2>Active Crop & Soil Recommendations</h2>
+              </div>
+              <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="sow">Direct Sow</button>
+                <button class="filter-btn" data-filter="harvest">Harvest Now</button>
+                <button class="filter-btn" data-filter="soil">Soil Care</button>
+              </div>
+            </div>
+
+            <!-- Crop Grid -->
+            <div id="crop-card-grid" class="crop-cards-container">
+              <!-- Injected by JS -->
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================================
+           TAB 4: SHORT-SCREEN QUESTS (TOUCH GRASS ENGINE)
+           ======================================================== -->
+      <section id="tab-quest" class="tab-pane">
+        <div class="grid-layout grid-2-col">
+          
+          <!-- Quest Generator Card -->
+          <div class="card card-glow">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Zero Screen Addiction</span>
+                <h2>The 15-Minute Sensory Micro-Expedition</h2>
+              </div>
+              <span class="badge badge-emerald">Outdoor Focus</span>
+            </div>
+
+            <p class="card-description">
+              The goal of this open-source build: <em>make the screen the shortest part of your day</em>. Roll a quick nature mission, read it in 20 seconds, lock your phone in your pocket, and let sensory cues guide you.
+            </p>
+
+            <!-- Mission Generator -->
+            <div class="quest-generator-box">
+              <div class="quest-meta-row">
+                <span class="quest-category-badge" id="quest-category">BIO-DIVERSITY HUNT</span>
+                <span class="quest-duration" id="quest-time">⏱️ 15 Minutes Screen-Free</span>
+              </div>
+              
+              <h3 class="quest-headline" id="quest-title">"The Fallen Log Micro-Jungle"</h3>
+              
+              <p class="quest-instructions" id="quest-text">
+                Walk at least 200 paces into wooded canopy. Find a decaying log covered in moss. Spend 10 full minutes inspecting the underneath bark without looking at any screen. Identify 3 distinct non-plant organisms (fungi, millipedes, lichen crusts).
+              </p>
+
+              <div class="quest-objectives-box">
+                <h4>Sensory Checklist:</h4>
+                <ul id="quest-checklist">
+                  <li>Find damp north-facing bark</li>
+                  <li>Inhale the geosmin smell of decomposing oak leaf litter</li>
+                  <li>Listen for any woodpecker tapping resonance in the canopy</li>
+                </ul>
+              </div>
+
+              <div class="quest-actions-row">
+                <button id="btn-roll-quest" class="btn btn-secondary">
+                  🎲 Roll Another Nature Quest
+                </button>
+                <button id="btn-start-quest-timer" class="btn btn-emerald btn-lg">
+                  🌲 Lock In & Start Pocket Walk
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Active Timer & Sensory Anchor -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Nature Presence Anchor</span>
+                <h2>Screen-Off Pocket Timer</h2>
+              </div>
+              <span class="status-dot dot-active"></span>
+            </div>
+
+            <div class="pocket-timer-display">
+              <div class="timer-circle">
+                <svg class="timer-svg" viewBox="0 0 100 100">
+                  <circle class="timer-bg" cx="50" cy="50" r="45"></circle>
+                  <circle class="timer-progress" id="timer-progress-ring" cx="50" cy="50" r="45"></circle>
+                </svg>
+                <div class="timer-digits">
+                  <span id="timer-clock">15:00</span>
+                  <small id="timer-status-caption">Screen-Free Time</small>
+                </div>
+              </div>
+
+              <div class="timer-controls">
+                <button id="btn-pause-timer" class="btn btn-outline" disabled>Pause</button>
+                <button id="btn-reset-timer" class="btn btn-outline">Reset</button>
+                <button id="btn-chime-test" class="btn btn-secondary" title="Play gentle wooden bird chime">
+                  🔔 Test Nature Chime
+                </button>
+              </div>
+            </div>
+
+            <!-- Grounding / Sensory Prompts -->
+            <div class="grounding-box">
+              <div class="grounding-title">
+                <span>🌿 5-4-3-2-1 Sensory Grounding:</span>
+              </div>
+              <div class="grounding-grid">
+                <div class="grounding-item"><strong>5</strong> Things you see with autumn color</div>
+                <div class="grounding-item"><strong>4</strong> Textures of bark or stones to touch</div>
+                <div class="grounding-item"><strong>3</strong> Distinct bird or wind sounds</div>
+                <div class="grounding-item"><strong>2</strong> Scents of soil, pine needles, or rain</div>
+                <div class="grounding-item"><strong>1</strong> Deep breath of crisp fresh outdoor air</div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================================
+           TAB 5: OPEN AI ARCHITECTURE & LOCAL INFERENCE
+           ======================================================== -->
+      <section id="tab-open-ai" class="tab-pane">
+        <div class="grid-layout grid-2-col">
+          
+          <!-- Open Source Rationale -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Why Open AI Matters</span>
+                <h2>Local Weights, Zero Clouds, Deep Woods</h2>
+              </div>
+              <span class="badge badge-primary">Open Source Core</span>
+            </div>
+
+            <div class="open-essay-content">
+              <h3>The Problem with Proprietary Cloud AI in the Wild</h3>
+              <p>
+                When you hike deep into a national forest, river valley, or mountain ravine to <strong>touch grass</strong>, cell signal disappears. Proprietary APIs fail, leaving you stranded with spinning loaders. Worse, your personal GPS tracks and audio recordings get shipped off to distant server farms.
+              </p>
+
+              <h3>Why TouchGrass AI is Built on Open Weights</h3>
+              <div class="feature-bullets">
+                <div class="bullet-card">
+                  <div class="bullet-icon">📡</div>
+                  <div>
+                    <strong>100% Offline Trail Independence:</strong>
+                    Runs locally in the browser via ONNX Runtime / WebAssembly. No network packets leave your device while you are in the woods.
+                  </div>
+                </div>
+
+                <div class="bullet-card">
+                  <div class="bullet-icon">🔒</div>
+                  <div>
+                    <strong>Total Trailhead Privacy:</strong>
+                    Your bio-acoustic recordings and run club locations stay in your local browser storage. No surveillance capitalism in the forest.
+                  </div>
+                </div>
+
+                <div class="bullet-card">
+                  <div class="bullet-icon">💵</div>
+                  <div>
+                    <strong>$0.00 Infinite Execution:</strong>
+                    Zero token fees, zero monthly subscriptions. You can listen to forest calls all morning without fear of API billing limits.
+                  </div>
+                </div>
+
+                <div class="bullet-card">
+                  <div class="bullet-icon">🦙</div>
+                  <div>
+                    <strong>Pluggable Local LLMs (Ollama / Llama 3.2):</strong>
+                    Have a laptop or phone running Ollama? Connect directly to <code>localhost:11434</code> with one click for rich naturalist field notes with open weights.
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Live Model Engine Selector & Local Ollama Bridge -->
+          <div class="card card-glow">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="card-tag">Engine Configuration</span>
+                <h2>Inference Engine & Local LLM Bridge</h2>
+              </div>
+            </div>
+
+            <div class="engine-config-box">
+              <label class="radio-card selected">
+                <input type="radio" name="ai_engine" value="browser_wasm" checked>
+                <div class="radio-content">
+                  <div class="radio-header">
+                    <strong>Browser-Native WebAssembly / ONNX</strong>
+                    <span class="badge badge-success">Active • Offline</span>
+                  </div>
+                  <p>In-browser bioacoustic feature classifier + botanical heuristics. Zero server required.</p>
+                </div>
+              </label>
+
+              <label class="radio-card">
+                <input type="radio" name="ai_engine" value="ollama_local">
+                <div class="radio-content">
+                  <div class="radio-header">
+                    <strong>Local Ollama / Open-Weight LLM Bridge</strong>
+                    <span class="badge badge-accent">http://localhost:11434</span>
+                  </div>
+                  <p>Calls open models like <code>llama3.2</code>, <code>phi3.5</code>, or <code>qwen2.5</code> locally on your machine for conversational trail logs.</p>
+                </div>
+              </div>
+
+              <!-- Ollama Connection Settings -->
+              <div id="ollama-settings" class="sub-settings-panel" style="display: none;">
+                <div class="form-group">
+                  <label for="ollama-url">Ollama Host URL:</label>
+                  <input type="text" id="ollama-url" class="input-field" value="http://localhost:11434">
+                </div>
+                <div class="form-group">
+                  <label for="ollama-model">Target Open-Weight Model:</label>
+                  <input type="text" id="ollama-model" class="input-field" value="llama3.2:latest">
+                </div>
+                <button id="btn-test-ollama" class="btn btn-secondary btn-sm">
+                  Test Local Ollama Connection
+                </button>
+                <span id="ollama-ping-result" class="ping-status"></span>
+              </div>
+
+              <!-- Open Weights Architecture Schema -->
+              <div class="architecture-diagram">
+                <h4>Pipeline Architecture</h4>
+                <div class="flow-chart">
+                  <div class="flow-step">
+                    <span>Field Audio / GPS</span>
+                    <small>Microphone + Web Audio</small>
+                  </div>
+                  <div class="flow-arrow">➔</div>
+                  <div class="flow-step step-accent">
+                    <span>FFT + Mel-Scale Extractor</span>
+                    <small>Zero-Latency Client WASM</small>
+                  </div>
+                  <div class="flow-arrow">➔</div>
+                  <div class="flow-step step-highlight">
+                    <span>Open-Weight Classifier</span>
+                    <small>AvianBio Local Matrix</small>
+                  </div>
+                  <div class="flow-arrow">➔</div>
+                  <div class="flow-step">
+                    <span>Field Log & Screen Off</span>
+                    <small>Back to the Woods</small>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Field Log Drawer (Bottom Sticky Bar) -->
+    <footer class="field-log-bar">
+      <div class="drawer-summary">
+        <span class="icon">📓</span>
+        <span>Today's Trail Field Log:</span>
+        <strong id="log-count-text">3 Bio-Observations Recorded</strong>
+      </div>
+      <div class="drawer-actions">
+        <button id="btn-view-log" class="btn btn-sm btn-secondary">View Field Log</button>
+        <button id="btn-quick-export" class="btn btn-sm btn-emerald">Export Markdown</button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ========================================================
+       MODAL 1: FIELD LOG & DEV CHALLENGE POST DRAFT
+       ======================================================== -->
+  <div id="modal-dev-post" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="badge badge-accent">DEV CHALLENGE SUBMISSION</span>
+          <h2>Touch Grass: Field Test & Open AI Post Draft</h2>
+        </div>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="modal-intro">
+          This post draft is dynamically assembled from your actual trail sessions, bio-acoustic IDs, route simulations, and answers every prompt question about why open-source AI is the right choice for getting people outside.
+        </p>
+
+        <div class="markdown-preview-box">
+          <pre><code id="dev-post-content" class="language-markdown"># Generating Field Post...</code></pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-copy-markdown" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy Post Markdown</span>
+        </button>
+        <button id="btn-download-markdown" class="btn btn-secondary">
+          ⬇ Download .md File
+        </button>
+        <button class="btn btn-outline" data-close-modal>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL 2: FIELD LOG DETAIL DRAWER
+       ======================================================== -->
+  <div id="modal-field-log" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Trail Journal & Bio Observations</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="logged-observations-list" class="log-entries-container">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-clear-logs" class="btn btn-outline btn-sm">Clear Trail Session</button>
+        <button class="btn btn-primary" data-close-modal>Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       POCKET MODE OVERLAY (DIM SCREEN FOR REAL WORLD)
+       ======================================================== -->
+  <div id="pocket-mode-overlay" class="pocket-overlay" style="display: none;">
+    <div class="pocket-content">
+      <div class="pocket-leaf-pulse">🍃</div>
+      <h2>Pocket Mode Active</h2>
+      <p>Screen dimmed to protect your night vision and keep your eyes off the glass.</p>
+      <div class="pocket-clock" id="pocket-clock-text">14:32</div>
+      <div class="pocket-sub" id="pocket-sub-text">Listening for avian audio in the background...</div>
+      <button id="btn-exit-pocket-mode" class="btn btn-emerald btn-lg">
+        Tap to Exit Pocket Mode
+      </button>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Main App Script -->
+  <script src="app.js"></script>
+</body>
+</html>
